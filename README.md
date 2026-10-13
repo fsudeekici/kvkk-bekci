@@ -20,6 +20,10 @@ kvkk-bekci apply --db sample.db --out masked.db --approve    # write the masked 
 
 `scan` and `apply` open the source database read-only. `apply` never overwrites an existing file.
 
+## Scan report
+
+![Scan report](docs/report.png)
+
 ## What scan finds
 
 | Type | Strict check |
@@ -60,11 +64,28 @@ Set the salt with `--salt` or `KVKK_BEKCI_SALT`.
 
 ## Limits
 
-- **Use a secret salt on real data.** With the built-in salt anyone can mask all possible TC numbers and reverse the copy.
+- **SQLite only.** Other databases are not supported.
+- **The default salt is not safe for real data.** With the built-in salt anyone can mask all possible TC numbers and reverse the copy. Set your own secret salt.
 - Masked names come from Faker's `tr_TR` lists, so they are only stable for the same Faker version.
 - A masked TC number or IBAN is valid, so it may by chance belong to a real person or account.
 - Only INTEGER and TEXT values are masked. REAL and BLOB values in a PII column are left as they are.
 - Masking a column with a `UNIQUE` constraint can fail on a collision; the output file is then removed.
+
+## How I built this
+
+I built this with Claude Code in plan mode. I read and approved the plan before any code was written.
+
+Bugs found during the work:
+
+- Faker `tr_TR` phone numbers are not real Turkish formats, so the sample data builds its own.
+- Dates such as `2024-05-30` were detected as phones.
+- Some TC numbers in the tests were wrong.
+- A bad TC number could become valid after masking (1 in 100).
+
+Problems I found in review:
+
+- The report leaked part of the PII in invalid examples. Now it shows only the shape.
+- The unique rate lowered the score for normal repeats like city and status. Now it is info only.
 
 ## Tests
 
