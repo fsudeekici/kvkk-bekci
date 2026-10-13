@@ -72,8 +72,56 @@ def test_html_escapes_names():
     assert "<script>" not in html
 
 
+def _chips(html: str) -> list[str]:
+    """Text of every example chip, with the space marker turned back into a space."""
+    chips = re.findall(r'<code class="chip">(.*?)</code>', html)
+    return [chip.replace('<span class="sp">␣</span>', " ") for chip in chips]
+
+
+def _report_with_examples(examples: list[str]) -> dict:
+    column = {
+        "column": "phone",
+        "declared_type": "TEXT",
+        "pii_type": "phone",
+        "empty_rate": 0.0,
+        "unique_rate": 1.0,
+        "format_rate": 0.0,
+        "score": 50,
+        "invalid_examples": examples,
+    }
+    return {
+        "database": "x.db",
+        "scanned_at": "now",
+        "version": "0",
+        "summary": {"tables": 1, "columns": 1, "pii_columns": 1},
+        "tables": [{"name": "t", "rows": 3, "columns": [column]}],
+    }
+
+
+def test_each_invalid_example_is_its_own_chip():
+    html = render_html(_report_with_examples(["999 999", "aaa", " 99  a "]))
+    assert _chips(html) == ["999 999", "aaa", " 99  a "]
+
+
+def test_spaces_in_a_chip_are_drawn_as_a_marker():
+    html = render_html(_report_with_examples([" 99  a "]))
+    chip = re.search(r'<code class="chip">(.*?)</code>', html).group(1)
+    assert chip.count("␣") == 4
+    assert " " not in re.sub(r"<[^>]+>", "", chip)
+
+
+def test_chip_text_is_escaped():
+    html = render_html(_report_with_examples(["<aa>&99"]))
+    assert '<code class="chip">&lt;aa&gt;&amp;99</code>' in html
+
+
+def test_column_without_examples_has_no_chips(sample_db):
+    html = render_html(_report_with_examples([]))
+    assert '<code class="chip">' not in html
+
+
 def test_html_examples_show_only_the_shape(sample_db):
-    examples = re.findall(r"<code>(.*?)</code>", render_html(scan_database(sample_db)))
+    examples = _chips(render_html(scan_database(sample_db)))
     assert examples
     for example in examples:
         assert not re.search(r"[0-8]", example)

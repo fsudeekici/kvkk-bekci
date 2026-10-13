@@ -31,7 +31,10 @@ td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
 .tag { background:var(--tag); color:var(--tagfg); border-radius:4px; padding:1px 7px; font-size:12px; }
 .score { font-weight:700; }
 .good { color:var(--good); } .mid { color:var(--mid); } .bad { color:var(--bad); }
-code { font-size:12px; }
+.chips { display:flex; flex-wrap:wrap; gap:6px; }
+.chip { font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space:pre;
+        border:1px solid var(--line); border-radius:4px; background:var(--head); padding:1px 6px; }
+.chip .sp { color:var(--muted); }
 """
 
 
@@ -47,9 +50,16 @@ def _band(score: int) -> str:
     return "good" if score >= 85 else "mid" if score >= 60 else "bad"
 
 
+def _chip(example: str) -> str:
+    """One boxed example. Spaces are drawn as a muted ␣ so they stay visible."""
+    text = escape(example).replace(" ", '<span class="sp">␣</span>')
+    return f'<code class="chip">{text}</code>'
+
+
 def _column_row(col: dict) -> str:
     pii = f'<span class="tag">{escape(col["pii_type"])}</span>' if col["pii_type"] else "–"
-    examples = " ".join(f"<code>{escape(e)}</code>" for e in col["invalid_examples"]) or "–"
+    chips = "".join(_chip(e) for e in col["invalid_examples"])
+    examples = f'<div class="chips">{chips}</div>' if chips else "–"
     return (
         "<tr>"
         f"<td>{escape(col['column'])}</td>"
@@ -95,7 +105,7 @@ def render_html(report: dict) -> str:
 <div class="card"><b>{summary['pii_columns']}</b>PII columns</div>
 </div>
 <p class="note">Score = 50% filled + 50% format match for PII columns; filled rate for the rest.
-Unique is shown for information only. Invalid examples show the shape only (9 = digit, a = letter).</p>
+Unique is shown for information only. Invalid examples show the shape only (9 = digit, a = letter, ␣ = space).</p>
 {sections}
 </main></body>
 </html>
